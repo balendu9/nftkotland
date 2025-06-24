@@ -12,6 +12,10 @@ interface ITiles {
 }
 
 contract RegionNFT is ERC721Enumerable {
+    address admin;
+    uint256 public nftmaxSupply = 1500;
+    uint256 public maxImagetypes = 2;
+
     using Counters for Counters.Counter;
     Counters.Counter private _ids;
 
@@ -35,11 +39,15 @@ contract RegionNFT is ERC721Enumerable {
         treasury  = _treasury;
         tiles  = ITiles(_gameCore);
         baseImageURL = _baseImageURL;
+        admin = msg.sender;
     }
 
-    function claimRegion(uint8 imageType) external returns (uint256 regionId) {
-        require(imageType >= 1 && imageType <= 2, "INVALID_IMAGE_TYPE");
+    
 
+
+    function claimRegion(uint8 imageType) external returns (uint256 regionId) {
+        require(imageType >= 1 && imageType <= maxImagetypes, "INVALID_IMAGE_TYPE");
+        require(totalSupply() < nftmaxSupply, "MAX_SUPPLY_REACHED");
         // Transfer GAME token from user
         require(
             gameToken.transferFrom(msg.sender, treasury, PRICE),
@@ -47,7 +55,7 @@ contract RegionNFT is ERC721Enumerable {
         );
 
         // Mint NFT
-        _ids.increment();
+        _ids.increment();   
         regionId = _ids.current();
         _safeMint(msg.sender, regionId);
 
@@ -81,5 +89,11 @@ contract RegionNFT is ERC721Enumerable {
             "data:application/json;base64,",
             Base64.encode(bytes(json))
         );
+    }
+
+    function setMaxnftSupply(uint256 newmaxsupply, uint256 newmaxImagetypes) external {
+        require(msg.sender == admin , "NOT_AUTHORIZED");
+        nftmaxSupply = newmaxsupply;
+        maxImagetypes = newmaxImagetypes;
     }
 }
