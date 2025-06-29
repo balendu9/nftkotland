@@ -1,5 +1,424 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+import "./Actions.sol";
+import "./Compute.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+contract UsersContract {
+
+    address admin;
+    Actions public actionContract;
+    Compute public computeContract;
+    using Strings for uint32;
+    using Strings for uint256;
+
+    uint8 totalresources = 9;
+
+    struct UserData{
+        address userAddress;
+        uint32 totalTilesOwned;
+        uint32 tilesUnderUse;
+        uint32 userExperience;
+        bool exists;
+        mapping(uint8 => uint64) inventory;
+    }
+
+    struct Transaction {
+        uint256 id;
+        string txtype;
+        string description;
+        uint256 amount;
+        uint256 timestamp;
+    }
+
+
+    mapping(address => UserData) public users;
+    mapping(address => Transaction[]) public transactionHistory;
+
+    mapping(address => uint256) public spent;
+    mapping(address => uint256) public earned;
+    mapping(address => uint256) public currentCropCount;
+    mapping(address => uint256) public currentFactoryCount;
+    mapping(address => uint256) public totalCropCount;
+    mapping(address => uint256) public totalFactoryCount;
+
+    constructor() {
+        admin = msg.sender;
+    }
+
+    function setContract(address _actionContract, address _computeContract) external {
+        require(msg.sender == admin, "Not authorized");
+        actionContract = Actions(_actionContract);
+        computeContract = Compute(_computeContract);
+    }
+
+
+    // =========================================
+    // Referral System
+    // =========================================
+
+ 
+    // mapping from user => their reffer
+    mapping(address => address) public referredBy;
+    // mapping from reffer => list of referrals
+    mapping(address => address[]) private referrals;
+    // track if user has already set a referrer
+    mapping(address => bool) public hasSetReferrer;
+
+    event ReferrerSet(address indexed user, address indexed referrer);
+    struct referreraddtime {
+        address referree;
+        uint256 timestamp;
+    }
+    mapping(address => referreraddtime[]) public referraladdTimeHistory;
+    
+    function setReferrer(address _referrer) external {
+        // address actualUser = _resolveUser(msg.sender);
+        require(!hasSetReferrer[msg.sender], "Referrer already set");
+        require(_referrer != address(0), "Invalid referrer");
+        require(_referrer != msg.sender, "Cannot refer yourself");
+
+        referredBy[msg.sender] = _referrer;
+        referrals[_referrer].push(msg.sender);
+        hasSetReferrer[msg.sender] = true;
+        referraladdTimeHistory[_referrer].push(
+            referreraddtime({
+            referree: msg.sender,
+            timestamp: block.timestamp
+        }));
+
+        emit ReferrerSet(msg.sender, _referrer);
+    }
+
+    function getReferralCount(address _referrer) external view returns(uint256) {
+        return referrals[_referrer].length;
+    }
+
+
+    struct ReferralEarning{
+        address referee;
+        uint256 amount;
+        uint256 timestamp;
+    }
+    mapping(address => ReferralEarning[] ) public referralrewardhistory;
+    mapping(address => uint256) public totalReferralEarnings;
+    
+    function updateReferralEarning(address _user, uint256 _amount) external onlySeedContracts {
+        totalReferralEarnings[_user] += _amount;
+        
+        ReferralEarning memory newEarning = ReferralEarning({
+            referee: msg.sender,       // This could be the contract calling — maybe you need to pass referee explicitly
+            amount: _amount,
+            timestamp: block.timestamp
+        });
+        referralrewardhistory[_user].push(newEarning);
+    }
+
+    
+function getReferralAddTimeHistory(address referrer) external view returns (address[] memory referees, uint256[] memory timestamps) {
+    uint256 length = referraladdTimeHistory[referrer].length;
+    referees = new address[](length);
+    timestamps = new uint256[](length);
+
+    for (uint256 i = 0; i < length; i++) {
+        referreraddtime memory entry = referraladdTimeHistory[referrer][i];
+        referees[i] = entry.referree;
+        timestamps[i] = entry.timestamp;
+    }
+}
+
+    function getReferralRewardHistory(address referrer) external view returns (address[] memory referees, uint256[] memory amounts, uint256[] memory timestamps) {
+    uint256 length = referralrewardhistory[referrer].length;
+    referees = new address[](length);
+    amounts = new uint256[](length);
+    timestamps = new uint256[](length);
+
+    for (uint256 i = 0; i < length; i++) {
+        ReferralEarning memory entry = referralrewardhistory[referrer][i];
+        referees[i] = entry.referee;
+        amounts[i] = entry.amount;
+        timestamps[i] = entry.timestamp;
+    }
+}
+
+
+
+    
+    
+
+
+
+    // ===============================
+    //    leaderboard
+    // ===============================
+
+    address[] public topPlayers;
+    mapping(address => string) public usernames;
+
+    function updateLeaderBoard(address _user) internal {
+        if(!users[_user].exists) return;
+
+        bool exists = false;
+        for (uint256 i = 0; i < topPlayers.length; i++) {
+            if (topPlayers[i] == _user) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists) {
+            topPlayers.push(_user);
+        }
+        //sorting leaderboard by exp
+        for(uint256 i = 0; i < topPlayers.length; i++) {
+            for (uint256 j = i+1; j < topPlayers.length; j++) {
+                if (users[topPlayers[j]].userExperience > users[topPlayers[i]].userExperience) {
+                    (topPlayers[i], topPlayers[j]) = (topPlayers[j], topPlayers[i]);
+                }
+            }
+        }
+
+        // only 100 players
+        if (topPlayers.length > 100) {
+            topPlayers.pop();
+        }
+    }
+
+    function getLeaderboard() external view returns (address[] memory, uint32[] memory) {
+        uint256 len = topPlayers.length;
+        address[] memory playerAddresses = new address[](len);
+        uint32[] memory playerExperience = new uint32[](len);
+
+        for(uint8 i = 0; i< len; i++) {
+            playerAddresses[i] = topPlayers[i];
+            playerExperience[i] = users[topPlayers[i]].userExperience;
+        }
+
+        return(playerAddresses ,playerExperience);
+
+    }
+
+
+
+    // ===============================
+    //    VIEWS
+    // ===============================
+
+    function getUserData(address _user) external view returns(
+        address userAddress, uint32 totalTilesOwned, uint32 tilesUnderUse, uint32 userExperience, bool exists
+    ) {
+        // address actualUser = _resolveUser(_user);
+        require(users[_user].exists, "User doesnt exist");
+        UserData storage userData = users[_user];
+        return (
+            userData.userAddress,
+            userData.totalTilesOwned,
+            userData.tilesUnderUse,
+            userData.userExperience,
+            userData.exists
+        );
+    }
+
+    function getTransactionHistory(address user) external view returns (
+        string[] memory txtype,
+        string[] memory descriptions,
+        uint256[] memory amounts,
+        uint256[] memory timestamps
+    ) {
+        uint256 len = transactionHistory[user].length;
+        txtype = new string[](len);
+        descriptions = new string[](len);
+        amounts = new uint256[](len);
+        timestamps = new uint256[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            Transaction memory txData = transactionHistory[user][i];
+            txtype[i] = txData.txtype;
+            descriptions[i] = txData.description;
+            amounts[i] = txData.amount;
+            timestamps[i] = txData.timestamp;
+        }
+    }
+
+    function getUserInventory(address user, uint8 resource) external view returns(uint64) {
+        return users[user].inventory[uint8(resource)];
+    }
+
+    function getUserAllInventory(
+        address user
+    ) external view returns (uint64[] memory) {
+        uint64[] memory inventoryData = new uint64[](totalresources);
+
+        for (uint8 i = 0; i < totalresources; i++) {
+            inventoryData[i] = users[user].inventory[i];
+        }
+        return inventoryData;        
+    }
+
+    // ===============================
+    //    UPDATERS
+    // ===============================
+
+ 
+    modifier onlySeedContracts() {
+        require(msg.sender == address(actionContract) || msg.sender == address(computeContract) , "Not authorized");
+        _;
+    }
+    uint256 public totalUsers = 0;
+    mapping(address => uint256) public accountage;
+    function setUserExists(address _user) external onlySeedContracts {
+        totalUsers += users[_user].exists ? 0 : 1;
+        users[_user].userAddress = _user;
+        users[_user].exists = true;
+        accountage[_user] = block.timestamp;
+    }
+
+    mapping(address => uint256) public userTxIdCounter;
+    function updateUserDataTileBuy(address _user, bool sellerorbuyer, uint256 price, uint32 tileId) external onlySeedContracts {
+        // false for seller and true for buyer
+        UserData storage user = users[_user];
+        require(user.exists, "User dont exist");
+        user.userExperience += 20;
+        updateLeaderBoard(_user);
+        userTxIdCounter[_user] += 1;
+
+        if(sellerorbuyer) { //buyer
+            user.totalTilesOwned += 1;
+            transactionHistory[_user].push(Transaction({
+                id: userTxIdCounter[_user],
+                txtype: "Purchase",
+                description: string(abi.encodePacked("Purchased Tile #", tileId.toString())),
+                amount: price,
+                timestamp: block.timestamp
+            }));
+            spent[_user] += price;
+        } else { // seller
+            user.totalTilesOwned -= 1;
+            transactionHistory[_user].push(Transaction({
+                id: userTxIdCounter[_user],
+                txtype: "Sale",
+                description: string(abi.encodePacked("Sold Tile #", tileId.toString())),
+                amount: price,
+                timestamp: block.timestamp
+            }));
+        }
+    }
+
+    function updateCropOrFactory(
+        address _user, bool corf, uint256 price, bool action, uint32 tileId
+    ) external onlySeedContracts { 
+        UserData storage user = users[_user];
+        require(user.exists, "user dont exist");
+        // true: crop, false: factory
+        // action: true: planting or factory build... false: harvesting or factory demolish
+        userTxIdCounter[_user] += 1;
+        if(corf) {
+            user.userExperience += 15;
+            if(action){
+                user.tilesUnderUse += 1;
+                transactionHistory[_user].push(Transaction({
+                    id: userTxIdCounter[_user],
+                    txtype: "Sow",
+                    description: string(abi.encodePacked("Crop Planted on Tile #", tileId.toString())),
+                    amount: price,
+                    timestamp: block.timestamp
+                }));
+                spent[_user] += price;
+                currentCropCount[_user] += 1;
+                totalCropCount[_user] += 1;
+            } else {
+                user.tilesUnderUse -= 1;
+                transactionHistory[_user].push(Transaction({
+                    id: userTxIdCounter[_user],
+                    txtype: "Harvest",
+                    description: string(abi.encodePacked("Crop Harvested on Tile #", tileId.toString())),
+                    amount: price,
+                    timestamp: block.timestamp
+                }));
+                currentCropCount[_user] -= 1;
+            }
+        } else {
+            user.userExperience += 40;
+            if(action) {
+                user.tilesUnderUse+= 1;
+                transactionHistory[_user].push(Transaction({
+                    id: userTxIdCounter[_user],
+                    txtype: "Investment",
+                    description: string(abi.encodePacked("Built Factory on Tile #", tileId.toString())),
+                    amount: price,
+                    timestamp: block.timestamp
+                }));
+                spent[_user] += price;
+                currentFactoryCount[_user] += 1;
+                totalFactoryCount[_user] += 1;
+            } else {
+                user.tilesUnderUse -= 1;
+                user.userExperience += 20;
+                transactionHistory[_user].push(Transaction({
+                    id: userTxIdCounter[_user],
+                    txtype: "Demolish",
+                    description: string(abi.encodePacked("Factory Demolished on Tile #", tileId.toString())),
+                    amount: 0,
+                    timestamp: block.timestamp
+                }));
+                currentFactoryCount[_user] -= 1;
+            }
+        }
+    }
+
+    function updateUserExperience(address user, uint8 exp) external onlySeedContracts {
+        users[user].userExperience += exp;
+        updateLeaderBoard(user);
+    }
+
+    function updateInventory(
+        address _user, uint8 resource, uint32 amount, bool increase
+    ) external onlySeedContracts {
+        if (increase) {
+            users[_user].inventory[resource] += amount;
+        } else {
+            users[_user].inventory[resource] -= amount;
+        }
+    }
+
+
+    function recordTransactionHistory(
+        address _user, string memory _txtype, string memory _description, uint256 amount, bool _spent, uint256 _price
+    ) external onlySeedContracts {
+        userTxIdCounter[_user] += 1;
+        
+        if(_spent) {
+            spent[_user] += _price;
+            transactionHistory[_user].push(Transaction({
+            id: userTxIdCounter[_user],
+            txtype: _txtype,
+            description: string(abi.encodePacked("Bought ", amount.toString(), " ", _description)),
+            amount: _price,
+            timestamp: block.timestamp
+        }));
+
+        } else {
+            earned[_user] += _price;
+            transactionHistory[_user].push(Transaction({
+            id: userTxIdCounter[_user],
+            txtype: _txtype,
+            description: string(abi.encodePacked("Sold ", amount.toString(), " ", _description)),
+            amount: _price,
+            timestamp: block.timestamp
+        }));
+        }
+
+        users[_user].userExperience += 10;
+        updateLeaderBoard(_user);
+
+    }
+
+}
+
+
+
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 import "./MarketPlace.sol";
 import "./TileContract.sol";
 import "./UsersContract.sol";
@@ -296,304 +715,28 @@ contract Actions {
 
 }
 
+ string[] public resources = [
+    "None",
+    "Wheat",
+    "Corn",
+    "Potato",
+    "Carrot",
+    "Food",
+    "Energy",
+    "FactoryGoods",
+    "Fertilizer"
+    ];
 
-
-
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-import "./UsersContract.sol";
-import "./Actions.sol";
-
-contract MarketplaceContract {    
-    address public admin;
-    constructor() {
-        admin = msg.sender;
-    }
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "not authorized");
-        _;
-    }
-
-    UsersContract public userContract;
-    Actions public actionContract;
-    function setContract(address _actionContract, address _userContract) external {
-        require(msg.sender == admin, "Not authorized");
-        actionContract = Actions(_actionContract);
-        userContract = UsersContract(_userContract);
-    }
-
-    uint8 totalTypes = 9;
-    function updatetotaltypes(uint8 _total) external onlyAdmin {
-        totalTypes = _total;
-    }
-
-    struct MarketListing {
-        address seller;
-        uint8 resourceType;
-        uint32 amount;
-        uint256 pricePerUnit;
-        bool isActive;
-    }
-
-    mapping(uint256 => MarketListing) public marketListing;
-
-    uint256 public nextListingId;
-
-    struct ResourceAnalytics {
-        uint64 totalUnitsSold;
-        uint256 totalRevenue;
-        uint256 averagePrice;
-        uint256 lastPrice;
-        uint256 minPrice;
-        uint256 maxPrice;
-        uint256 lastUpdatedTime;
-    }
-
-    mapping(uint8 => ResourceAnalytics) public resourceAnalytics;
-
-    struct ListingAnalytics {
-        uint64 totalUnitsListed;
-        uint256 totalListingValue;
-        uint64 totalListings;
-        uint256 averageListingPrice;
-        uint256 lastUpdatedTime;
-    }
-
-    mapping(uint8 => ListingAnalytics) public listingAnalytics;
-
-
-    struct PricePoint {
-        uint256 price;
-        uint256 timestamp;
-    }
-    mapping(uint8 => PricePoint[]) public priceHistory;
-
-
-    struct DailyPriceSummary {
-        uint256 low;
-        uint256 high;
-        uint256 total;
-        uint256 count;
-        uint256 average;
-    }
-    mapping(uint8 => mapping(uint256 => DailyPriceSummary)) public dailyPriceSummary;
-
-
-    event ListedResourceForSale(
-        address seller,
-        uint8 resourceType,
-        uint32 amount,
-        uint256 pricePerUnit
-    );
-    function listItems(
-        address _seller,
-        uint8 _resourceType,
-        uint32 _amount,
-        uint256 _pricePerUnit
-    ) public {
-        require(msg.sender == address(actionContract), "Not authorized");
-        marketListing[nextListingId] = MarketListing({
-            seller: _seller,
-            resourceType: _resourceType,
-            amount: _amount,
-            pricePerUnit: _pricePerUnit,
-            isActive: true
-        });
-
-        ListingAnalytics storage la = listingAnalytics[_resourceType];
-        la.totalUnitsListed += _amount;
-        la.totalListingValue += (_pricePerUnit * _amount);
-        la.totalListings += 1;
-        la.lastUpdatedTime = block.timestamp;
-        nextListingId++;
-
-        if (la.totalUnitsListed > 0) {
-            la.averageListingPrice = la.totalListingValue / la.totalUnitsListed;
-        }
-        emit ListedResourceForSale(_seller, _resourceType, _amount, _pricePerUnit);
-    }
-
-    event ProductPurchased(address seller, uint256 earned);
-    function buyItem(uint256 listingId, uint32 buyAmount, uint256 totalCost, address seller) external {
-        require(msg.sender == address(actionContract), "Not authorized");
-
-        marketListing[listingId].amount -= buyAmount;
-        if (marketListing[listingId].amount == 0) {
-            marketListing[listingId].isActive = false;
-        } 
-
-        MarketListing storage listing = marketListing[listingId];
-        ResourceAnalytics storage ra = resourceAnalytics[listing.resourceType];
-        ra.totalUnitsSold += buyAmount;
-        ra.totalRevenue += totalCost;
-        ra.lastPrice = listing.pricePerUnit;
-        ra.lastUpdatedTime = block.timestamp;
-
-        
-        if (ra.minPrice == 0 || listing.pricePerUnit < ra.minPrice) {
-            ra.minPrice = listing.pricePerUnit;
-        }
-        if (listing.pricePerUnit > ra.maxPrice) {
-            ra.maxPrice = listing.pricePerUnit;
-        }
-
-        if (ra.totalUnitsSold > 0) {
-            ra.averagePrice = ra.totalRevenue / ra.totalUnitsSold;
-
-        }
-
-        PricePoint memory point = PricePoint({
-            price: listing.pricePerUnit,
-            timestamp: block.timestamp
-        });
-
-        priceHistory[listing.resourceType].push(point);
-        uint256 day = block.timestamp / 1 days;
-        DailyPriceSummary storage summary = dailyPriceSummary[listing.resourceType][day];
-
-        
-        if (summary.count == 0) {
-            summary.low = listing.pricePerUnit;
-            summary.high = listing.pricePerUnit;
-        } else {
-            if (listing.pricePerUnit < summary.low) summary.low = listing.pricePerUnit;
-            if (listing.pricePerUnit > summary.high) summary.high = listing.pricePerUnit;
-        }
-
-        summary.total += listing.pricePerUnit;
-        summary.count += 1;
-        summary.average = summary.total / summary.count;
-
-
-        emit ProductPurchased(seller, totalCost);
-    }
-
-
-
-    function getListingAnalytics() external view returns (
-        uint8[] memory resourceIds,
-        uint64[] memory listedUnits,
-        uint256[] memory avgListingPrices,
-        uint64[] memory totalListings,
-        uint64[] memory soldUnits,
-        uint256[] memory avgSoldPrices,
-        uint256[] memory totalRevenues,
-        uint256[] memory minPrices,
-        uint256[] memory maxPrices,
-        uint256[] memory lastSoldTimes
-    ) {
+    function recordSaleHistory(address _user, bool typeoftnx, uint8 resourcetype, uint256 amount, uint256 price) external onlyActions {
+        if (typeoftnx) {
+            // purchase
+            string memory usertxtype = "Purchase";
+            string memory resource = resources[resourcetype];
+            userContract.recordTransactionHistory(_user, usertxtype, resource, amount, true, price);
     
-        resourceIds = new uint8[](totalTypes);
-        listedUnits = new uint64[](totalTypes);
-        avgListingPrices = new uint256[](totalTypes);
-        totalListings = new uint64[](totalTypes);
-        soldUnits = new uint64[](totalTypes);
-        avgSoldPrices = new uint256[](totalTypes);
-        totalRevenues = new uint256[](totalTypes);
-        minPrices = new uint256[](totalTypes);
-        maxPrices = new uint256[](totalTypes);
-        lastSoldTimes = new uint256[](totalTypes);
-
-        for (uint8 i = 0; i < totalTypes; i++) {
-            ListingAnalytics memory la = listingAnalytics[i];
-            ResourceAnalytics memory ra = resourceAnalytics[i];
-
-            resourceIds[i] = i;
-            listedUnits[i] = la.totalUnitsListed;
-            avgListingPrices[i] = la.averageListingPrice;
-            totalListings[i] = la.totalListings;
-
-            soldUnits[i] = ra.totalUnitsSold;
-            avgSoldPrices[i] = ra.averagePrice;
-            totalRevenues[i] = ra.totalRevenue;
-            minPrices[i] = ra.minPrice;
-            maxPrices[i] = ra.maxPrice;
-            lastSoldTimes[i] = ra.lastUpdatedTime;
-        }
-
-    }
-
-
-    function getResourceAnalytics(uint8 resourceType) external view returns (
-        uint64 totalUnitsSold,
-        uint256 totalRevenue,
-        uint256 averagePrice,
-        uint256 lastPrice,
-        uint256 minPrice,
-        uint256 maxPrice,
-        uint256 lastUpdatedTime
-    ) {
-        ResourceAnalytics memory analytics = resourceAnalytics[resourceType];
-        return (
-            analytics.totalUnitsSold,
-            analytics.totalRevenue,
-            analytics.averagePrice,
-            analytics.lastPrice,
-            analytics.minPrice,
-            analytics.maxPrice,
-            analytics.lastUpdatedTime
-        );
-    }
-
-    function getMarketListing(uint256 listingId) external view returns (
-        address seller,
-        uint8 resourceType,
-        uint32 amount,
-        uint256 pricePerUnit,
-        bool isActive
-    ) {
-        MarketListing memory listing = marketListing[listingId];
-        return (
-            listing.seller,
-            listing.resourceType,
-            listing.amount,
-            listing.pricePerUnit,
-            listing.isActive
-        );
-    }
-
-    function getAllMarketListings()
-        external
-        view
-        returns (
-            uint256[] memory listingIds,
-            address[] memory sellers,
-            uint8[] memory resourceTypes,
-            uint32[] memory amounts,
-            uint256[] memory pricePerUnits
-        )
-    {
-        uint256 count = 0;
-
-        // First, count active listings
-        for (uint256 i = 0; i < nextListingId; i++) {
-            if (marketListing[i].isActive) {
-                count++;
-            }
-        }
-
-        // Then fill arrays
-        listingIds = new uint256[](count);
-        sellers = new address[](count);
-        resourceTypes = new uint8[](count);
-        amounts = new uint32[](count);
-        pricePerUnits = new uint256[](count);
-
-        uint256 index = 0;
-        for (uint256 i = 0; i < nextListingId; i++) {
-            MarketListing memory m = marketListing[i];
-            if (m.isActive) {
-                listingIds[index] = i;
-                sellers[index] = m.seller;
-                resourceTypes[index] = m.resourceType;
-                amounts[index] = m.amount;
-                pricePerUnits[index] = m.pricePerUnit;
-                index++;
-            }
+        } else {
+            string memory usertxtype = "Sale";
+            string memory resource = resources[resourcetype];
+            userContract.recordTransactionHistory(_user, usertxtype, resource, amount, false, price);
         }
     }
-
-
-
-
-}
