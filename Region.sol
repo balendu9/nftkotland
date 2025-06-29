@@ -8,13 +8,13 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 
 interface ITiles {
-    function initializeRegion(uint256 regionId) external;
+    function initializeRegion(uint256 regionId, uint8 regionType) external;
 }
 
 contract RegionNFT is ERC721Enumerable {
     address admin;
     uint256 public nftmaxSupply = 1500;
-    uint256 public maxImagetypes = 2;
+    uint256 public maxImagetypes = 1;
 
     using Counters for Counters.Counter;
     Counters.Counter private _ids;
@@ -63,7 +63,7 @@ contract RegionNFT is ERC721Enumerable {
         regionImageType[regionId] = imageType;
 
         // Initialize tiles
-        tiles.initializeRegion(regionId);
+        tiles.initializeRegion(regionId, imageType);
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {

@@ -1,24 +1,29 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-contract UsersContract {
+contract Users {
     address admin;
     constructor () {
         admin = msg.sender;
     }
-    
+
     modifier onlyAdmin() {
         require(msg.sender == admin, "ONLY_ADMIN");
         _;
     }
 
-    address public tileContract;
-    address public computeContract;
+    address public computecontract;
+    address public marketplace;
+
+    function setcontract (address _compute, address _marketplace) external onlyAdmin {
+        computecontract = _compute;
+        marketplace = _marketplace;
+    }
 
     uint8 totalresources = 9;
     function updateResources(uint8 _newtotal) external onlyAdmin {
         totalresources = _newtotal;
-    }   
+    }
 
     struct UserData {
         address userAddress;
@@ -29,7 +34,8 @@ contract UsersContract {
         mapping(uint8 => uint256) inventory;
     }
 
-    mapping(address => UserData) public users;
+
+    mapping ( address => UserData ) public users;
 
     // ===============================
     //    GETTERS
@@ -49,7 +55,6 @@ contract UsersContract {
         );
     }
 
-
     function getUserInventory(address user, uint8 resource) external view returns(uint256) {
         return users[user].inventory[uint8(resource)];
     }
@@ -65,25 +70,19 @@ contract UsersContract {
         return inventoryData;        
     }
 
-
     // ===============================
     //    SETTERS
     // ===============================
 
-    function setContracts ( address _tilecontract, address _computecontract ) external  onlyAdmin {
-        tileContract = _tilecontract;
-        computeContract = _computecontract;
-    }
-
     modifier internalContracts() {
-        require( msg.sender == tileContract || msg.sender == computeContract, "NOT_AUTHORIZED");
+        require( msg.sender == computecontract || msg.sender == marketplace , "NOT_AUTHORIZED");
         _;
     }
 
-    
     uint256 public totalusers = 0;
-    mapping(address => uint256) public accountage;
-    function setUserExists(address _user) external internalContracts {
+    mapping ( address => uint256 ) public accountage;
+    function setUserExists ( address _user ) external internalContracts {
+
         if ( !users[_user].exists ) {
             totalusers += 1;
             users[_user].userAddress = _user;
@@ -92,7 +91,7 @@ contract UsersContract {
         }
     }
 
-    function updateInventory(
+    function updateInventory (
         address _user, uint8 resource, uint32 amount, bool increase
     ) external internalContracts {
         if (increase) {
@@ -103,10 +102,9 @@ contract UsersContract {
     }
 
 
-
-    // =========================================
-    // Referral System
-    // =========================================
+    // ===============================
+    //    REFERRAL SYSTEM
+    // ===============================
 
     // mapping from user => their reffer
     mapping(address => address) public referredBy;
@@ -121,7 +119,8 @@ contract UsersContract {
     }
     mapping(address => referreraddtime[]) public referraladdTimeHistory;
 
-    function setReferrer(address _referrer) external {
+
+    function setReferrer ( address _referrer ) external {
         require(!hasSetReferrer[msg.sender], "REFERRER_ALREADY_SET");
         require(_referrer != address(0), "INVALID_REFERRER");
         require(_referrer != msg.sender, "CANNOT_REFERRER_YOURSELF");
@@ -141,6 +140,8 @@ contract UsersContract {
         return referrals[_referrer].length;
     }
 
+
+
     struct ReferralEarning{
         address referee;
         uint256 amount;
@@ -153,7 +154,11 @@ contract UsersContract {
         totalReferralEarnings[_user] += _amount;
         
     } 
-      
+
+    function getReferrer(address user) external view returns (address) {
+        return referredBy[user];
+    }
+
 
 
 }

@@ -75,7 +75,7 @@ contract Tiles {
         _;
     }
 
-    function initializeRegion(uint256 regionId) external {
+    function initializeRegion(uint256 regionId, uint8 regionType) external {
         require(msg.sender == address(regionNFT), "ONLY_REGION_NFT");
         require(!regionInitialzied[regionId], "ALREADY_INITIALIZED");
 
@@ -85,7 +85,8 @@ contract Tiles {
         for (uint8 i = 0; i < GRID_SIZE; i++) {
             tiles.push(); // this adds an empty TileData slot
         }
-        
+        (uint8 _fertility, uint8 _waterLevel) = computeContract.regiontilesprops(regionType);
+
         for (uint8 i =0; i < GRID_SIZE; i++) {
             TileData storage t = tiles[i];
             t.id = i;
@@ -93,8 +94,8 @@ contract Tiles {
             t.isCrop = false;
             t.cropTypeId = 0;
             t.factoryTypeId = 0;
-            t.fertility = 0;
-            t.waterLevel = 0;
+            t.fertility = _fertility;
+            t.waterLevel = _waterLevel;
             t.growthStage = 0;
         } 
         regionInitialzied[regionId] = true;

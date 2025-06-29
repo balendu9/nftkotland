@@ -58,7 +58,7 @@ contract Compute {
 
     // MODIFIER
     modifier internalContracts() {
-        require(msg.sender == address(userContract), "UNAUTH");
+        require(msg.sender == address(userContract) || msg.sender == address(tilecontract) , "UNAUTH");
         _;
     }
 
@@ -147,11 +147,17 @@ contract Compute {
     }
 
 
+    function regiontilesprops(uint8 typeid) external internalContracts returns ( uint8 fertility, uint8 waterLevel) {
+        if ( typeid == 1) {
+            fertility = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, typeid, "fertility"))) % 21 + 5);
+            waterLevel = uint8(uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, typeid, "water"))) % 21 + 5);
+        } else {
+            fertility = 0;
+            waterLevel = 0;
+        }
 
-
-
-
-
+        return ( fertility, waterLevel );
+    }
 
 
 }
