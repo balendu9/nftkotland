@@ -154,8 +154,6 @@ contract Users {
         return referrals[_referrer].length;
     }
 
-
-
     struct ReferralEarning{
         address referee;
         uint256 amount;
@@ -242,7 +240,78 @@ contract Users {
         }
         users[_user].userExperience += 10;
     }
-    
+
+
+    // gettransactionhistory
+
+    function getTransactionHistory(address user) external view returns (
+        string[] memory txtype,
+        string[] memory descriptions,
+        uint256[] memory amounts,
+        uint256[] memory timestamps
+    ) {
+        uint256 len = transactionHistory[user].length;
+        txtype = new string[](len);
+        descriptions = new string[](len);
+        amounts = new uint256[](len);
+        timestamps = new uint256[](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            Transaction memory txData = transactionHistory[user][i];
+            txtype[i] = txData.txtype;
+            descriptions[i] = txData.description;
+            amounts[i] = txData.amount;
+            timestamps[i] = txData.timestamp;
+        }
+    }
+
+
+    // leaderboard
+    address[] public topPlayers;
+    function updateLeaderBoard (address _user)  {
+        bool exists = false;
+        for (uint256 i = 0; i < topPlayers.length; i++) {
+            if (topPlayers[i] == _user) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists) {
+            topPlayers.push(_user);
+        }
+
+        for(uint256 i = 0; i < topPlayers.length; i++) {
+            for (uint256 j = i+1; j < topPlayers.length; j++) {
+                if (users[topPlayers[j]].userExperience > users[topPlayers[i]].userExperience) {
+                    (topPlayers[i], topPlayers[j]) = (topPlayers[j], topPlayers[i]);
+                }
+            }
+        }
+
+        if (topPlayers.length > 50) {
+            topPlayers.pop();
+        }
+    }
+
+    function getLeaderboard() external view returns (address[] memory, uint32[] memory) {
+        uint256 len = topPlayers.length;
+        address[] memory playerAddresses = new address[](len);
+        uint32[] memory playerExperience = new uint32[](len);
+
+        for(uint8 i = 0; i< len; i++) {
+            playerAddresses[i] = topPlayers[i];
+            playerExperience[i] = users[topPlayers[i]].userExperience;
+        }
+
+        return(playerAddresses ,playerExperience);
+
+    }
+
+    function updateUserExperience(address _user, uint8 _exp) external internalContracts {
+        users[user].userExperience += _exp;
+        updateLeaderBoard(_user);
+    }
 
 
 }

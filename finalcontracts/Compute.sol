@@ -66,6 +66,7 @@ contract Compute {
                 usercontract.updateInventory(_user, 6, 10, true);
             }
         }
+        usercontract.updateUserExperience(_user, 10);
     }
 
     // ===============================
@@ -110,6 +111,7 @@ contract Compute {
         if ( address(_user) != address(0) ) {
             resourceAmountHarvested = 100;
         }
+        usercontract.updateUserExperience(_user, 25);
 
         if (_cropTypeId == 1) {
             usercontract.updateInventory(_user, 1, resourceAmountHarvested, true);
@@ -135,6 +137,7 @@ contract Compute {
     // ===============================
        
     function _produceFromFactory(address _user, uint8 _factoryType) external internalcontracts {
+        usercontract.updateUserExperience(_user, 16);
         if (_factoryType == 1) {
             produceFood(_user);
         } else if (_factoryType == 2) {

@@ -41,6 +41,7 @@ contract Marketplace {
     }
 
     uint256 public kotvalue = 0;
+    uint256 public totalassetssold = 0;
 
     struct MarketListing {
         address seller;
@@ -123,6 +124,7 @@ contract Marketplace {
         if (la.totalUnitsListed > 0) {
             la.averageListingPrice = la.totalListingValue / la.totalUnitsListed;
         }
+        usercontract.updateUserExperience(msg.sender, 5);
         emit ListedResourceForSale(_resourceType, _amount, _pricePerUnit);
     }
 
@@ -140,6 +142,7 @@ contract Marketplace {
             "TOKEN_TRANSFER_FAILED"
         );
         kotvalue += cost;
+        totalassetssold += buyAmount;
         listing.amount -= buyAmount;
         if (listing.amount == 0) {
             listing.isActive = false;
@@ -182,6 +185,8 @@ contract Marketplace {
         summary.total += listing.pricePerUnit;
         summary.count += 1;
         summary.average = summary.total / summary.count;
+        usercontract.updateUserExperience(msg.sender, 20);
+        usercontract.updateUserExperience(listing.seller, 17);
 
         usercontract.recordMarketplacetx (msg.sender, "Purchase", resources[listing.resourceType], buyAmount, true, cost );
         usercontract.recordMarketplacetx (listing.seller , "Sold", resources[listing.resourceType], buyAmount, false, cost );
