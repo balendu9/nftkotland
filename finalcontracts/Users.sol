@@ -154,6 +154,8 @@ contract Users {
         return referrals[_referrer].length;
     }
 
+
+
     struct ReferralEarning{
         address referee;
         uint256 amount;
@@ -244,20 +246,29 @@ contract Users {
 
     // gettransactionhistory
 
-    function getTransactionHistory(address user) external view returns (
+    function getTransactionHistory(address user, uint256 page) external view returns (
         string[] memory txtype,
         string[] memory descriptions,
         uint256[] memory amounts,
         uint256[] memory timestamps
     ) {
-        uint256 len = transactionHistory[user].length;
+        uint256 total = transactionHistory[user].length;
+        require(total >0, "NO_TRANSACTION_HISTORY");
+        uint256 itemsPerPage = 10;
+        uint256 start = total > page * itemsPerPage ? total - (page * itemsPerPage) : 0;
+
+        uint256 end = total - ((page - 1) * itemsPerPage);
+        if (end > total) end = total;
+        if (start > end) start = 0;
+        uint256 len = end - start;
+
         txtype = new string[](len);
         descriptions = new string[](len);
         amounts = new uint256[](len);
         timestamps = new uint256[](len);
 
         for (uint256 i = 0; i < len; i++) {
-            Transaction memory txData = transactionHistory[user][i];
+            Transaction memory txData = transactionHistory[user][start + i];
             txtype[i] = txData.txtype;
             descriptions[i] = txData.description;
             amounts[i] = txData.amount;
@@ -268,7 +279,7 @@ contract Users {
 
     // leaderboard
     address[] public topPlayers;
-    function updateLeaderBoard (address _user)  {
+    function updateLeaderBoard (address _user) internal  {
         bool exists = false;
         for (uint256 i = 0; i < topPlayers.length; i++) {
             if (topPlayers[i] == _user) {
@@ -309,7 +320,7 @@ contract Users {
     }
 
     function updateUserExperience(address _user, uint8 _exp) external internalContracts {
-        users[user].userExperience += _exp;
+        users[_user].userExperience += _exp;
         updateLeaderBoard(_user);
     }
 

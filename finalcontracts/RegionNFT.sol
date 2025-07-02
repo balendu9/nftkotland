@@ -11,6 +11,8 @@ import "./Compute.sol";
 contract RegionNFT is ERC721Enumerable {
     using Counters for Counters.Counter;
     using Strings for uint256;
+    uint256 public totalcrops= 0;
+    uint256 public totalfactory = 0;
 
     address public admin;
     uint256 public nftmaxSupply = 1500;
@@ -175,6 +177,7 @@ contract RegionNFT is ERC721Enumerable {
         tile.isBeingUsed = true;
         tile.isCrop = true;
         tile.cropTypeId = cropTypeId;
+        totalcrops += 1;
 
         computecontract._giveReferralRewards(msg.sender, 1);
         calculateRegionMeta(regionId);
@@ -196,6 +199,9 @@ contract RegionNFT is ERC721Enumerable {
         );
         tile.waterLevel += 7;
         tile.growthStage += growth;
+        if (tile.growthStage >= 100) {
+            tile.growthStage = 100;
+        }
         calculateRegionMeta(regionId);
     }
 
@@ -212,6 +218,9 @@ contract RegionNFT is ERC721Enumerable {
 
         tile.fertility = 100;
         tile.growthStage += growth;
+        if (tile.growthStage >= 100) {
+            tile.growthStage = 100;
+        }
         calculateRegionMeta(regionId);
     }
 
@@ -249,6 +258,7 @@ contract RegionNFT is ERC721Enumerable {
             token.transferFrom(msg.sender, admin, cropPrice),
             "TOKEN_TRANSFER_FAILED"
         );
+        totalfactory += 1;
         tile.isBeingUsed = true;
         tile.factoryTypeId = _factoryTypeId;
         computecontract._giveReferralRewards(msg.sender, 2);
