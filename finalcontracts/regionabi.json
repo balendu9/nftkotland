@@ -1,4 +1,6 @@
-0x994E0f09598b3C668623e1bE461E4CA09e7fdF24
+0x6e972C70115588e0794c3098D82a76cFD2cdABB5
+
+
 [
 	{
 		"inputs": [
@@ -654,6 +656,19 @@
 				"internalType": "bool",
 				"name": "",
 				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "kotpassed",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
 		"stateMutability": "view",

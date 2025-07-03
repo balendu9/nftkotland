@@ -1,6 +1,24 @@
-0xeb5a013Ec531fF1cFe765bb07A079201b71d1ffa
+0x958B9177Eb0A2135DE8622ceb87E32BE56373416
 
 [
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "listingId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint32",
+				"name": "buyAmount",
+				"type": "uint32"
+			}
+		],
+		"name": "buyListedResource",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
 	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
@@ -32,6 +50,29 @@
 		"type": "event"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "_resourceType",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint32",
+				"name": "_amount",
+				"type": "uint32"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_pricePerUnit",
+				"type": "uint256"
+			}
+		],
+		"name": "listResourceForSale",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"anonymous": false,
 		"inputs": [
 			{
@@ -51,6 +92,37 @@
 		"type": "event"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_usercontract",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_token",
+				"type": "address"
+			}
+		],
+		"name": "setContracts",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint8",
+				"name": "_total",
+				"type": "uint8"
+			}
+		],
+		"name": "updatetotaltypes",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [],
 		"name": "admin",
 		"outputs": [
@@ -61,24 +133,6 @@
 			}
 		],
 		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "listingId",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint32",
-				"name": "buyAmount",
-				"type": "uint32"
-			}
-		],
-		"name": "buyListedResource",
-		"outputs": [],
-		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -334,29 +388,6 @@
 		"inputs": [
 			{
 				"internalType": "uint8",
-				"name": "_resourceType",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint32",
-				"name": "_amount",
-				"type": "uint32"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_pricePerUnit",
-				"type": "uint256"
-			}
-		],
-		"name": "listResourceForSale",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint8",
 				"name": "",
 				"type": "uint8"
 			}
@@ -542,24 +573,6 @@
 		"type": "function"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_usercontract",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "_token",
-				"type": "address"
-			}
-		],
-		"name": "setContracts",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"inputs": [],
 		"name": "token",
 		"outputs": [
@@ -573,16 +586,16 @@
 		"type": "function"
 	},
 	{
-		"inputs": [
+		"inputs": [],
+		"name": "totalassetssold",
+		"outputs": [
 			{
-				"internalType": "uint8",
-				"name": "_total",
-				"type": "uint8"
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
-		"name": "updatetotaltypes",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{

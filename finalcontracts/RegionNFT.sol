@@ -13,12 +13,12 @@ contract RegionNFT is ERC721Enumerable {
     using Strings for uint256;
     uint256 public totalcrops= 0;
     uint256 public totalfactory = 0;
-
     address public admin;
     uint256 public nftmaxSupply = 1500;
 
     IERC20 public immutable token;
     address public treasury;
+    uint256 public kotpassed = 0;
 
     uint256 public constant PRICE = 100 ether;
 
@@ -131,7 +131,6 @@ contract RegionNFT is ERC721Enumerable {
         for ( uint8 i = 0; i < 9; ) {
             TileData storage t = regionTiles[regionId][i];
             t.id = i;
-
             unchecked { i++; }
         }
         regionInitialized[regionId]= true;
@@ -144,7 +143,7 @@ contract RegionNFT is ERC721Enumerable {
 
     for (uint256 i = 0; i < len; i++) {
         TileData memory t = tiles[i];
-        if (t.factoryTypeId > 0) p += 10;
+        if (t.factoryTypeId > 0) p += 13;
         f += t.fertility;
         w += t.waterLevel;
     }
@@ -152,7 +151,8 @@ contract RegionNFT is ERC721Enumerable {
     uint8 avgF = uint8(f / len);
     uint8 avgW = uint8(w / len);
     uint8 pol = uint8(p);
-    uint8 eco = 100 - pol + avgF + avgW;
+    uint256 ecoTmp = 100 - pol + avgF + avgW;
+    uint8 eco = uint8(ecoTmp > 255 ? 255 : ecoTmp);
 
     regionMeta[regionId] = RegionMeta(pol, avgF, avgW, eco, block.timestamp);
 }
@@ -169,16 +169,17 @@ contract RegionNFT is ERC721Enumerable {
         require( tileId < 9, "INVALID_TILE_ID" );
         TileData storage tile = regionTiles[regionId][tileId];
         require( !tile.isBeingUsed, "TILE_OCCUPIED" );
-        require( cropTypeId >= 1 && cropTypeId <= 4, "INVALID_CROP" );
+        require( cropTypeId >= 1 && cropTypeId <= 5, "INVALID_CROP" );
         require(
             token.transferFrom(msg.sender, admin, cropPrice),
             "TOKEN_TRANSFER_FAILED"
         );
+        kotpassed += cropPrice;
         tile.isBeingUsed = true;
         tile.isCrop = true;
         tile.cropTypeId = cropTypeId;
         totalcrops += 1;
-
+        
         computecontract._giveReferralRewards(msg.sender, 1);
         calculateRegionMeta(regionId);
         computecontract.recordTxns(msg.sender, true, cropPrice, true, tileId);
@@ -210,7 +211,7 @@ contract RegionNFT is ERC721Enumerable {
         require( tileId < 9, "INVALID_TILE_ID" );
         TileData storage tile = regionTiles[regionId][tileId];
         require(tile.isBeingUsed, "NO_CROP");
-        require(tile.fertility <= 100, "ALREADY_MAX_FERTILITY");
+        require(tile.fertility < 100, "ALREADY_MAX_FERTILITY");
 
         uint8 growth = computecontract.plantGrowthCalculator(
             tile.cropTypeId, tile.fertility, tile.waterLevel, regionMeta[regionId].ecoScore, regionMeta[regionId].pollutionLevel, true
@@ -236,6 +237,7 @@ contract RegionNFT is ERC721Enumerable {
         tile.cropTypeId = 0;
         tile.fertility = 0;
         tile.waterLevel = 0;
+        tile.growthStage = 0;
         
         calculateRegionMeta(regionId);
 
@@ -246,16 +248,16 @@ contract RegionNFT is ERC721Enumerable {
     //    Factory
     // ===============================
     
-    uint256 public factoryPrice = 500000 * 10 * 18;
+    uint256 public factoryPrice = 400000 * 10 * 18;
     function buildFactory ( uint256 regionId, uint8 tileId, uint8 _factoryTypeId )
     external onlyRegionOwner(regionId) {
         require( tileId < 9, "INVALID_TILE_ID" );
         TileData storage tile = regionTiles[regionId][tileId];
         require(!tile.isBeingUsed, "TILE_OCCUPIED");
-        require( _factoryTypeId >= 1 && _factoryTypeId < 4, "INVALID_FACTORY" );
+        require( _factoryTypeId >= 1 && _factoryTypeId <= 4, "INVALID_FACTORY" );
         
         require(
-            token.transferFrom(msg.sender, admin, cropPrice),
+            token.transferFrom(msg.sender, admin, factoryPrice),
             "TOKEN_TRANSFER_FAILED"
         );
         totalfactory += 1;
@@ -266,15 +268,13 @@ contract RegionNFT is ERC721Enumerable {
 
         computecontract.recordTxns(msg.sender, false, 0, true, tileId);
     }
-
     function produceFromFactory(uint256 regionId, uint32 tileId, uint8 _factoryTypeId) 
     external onlyRegionOwner( regionId ) {
         require( tileId < 9, "INVALID_TILE_ID" );
         TileData storage tile = regionTiles[regionId][tileId];
-        require(tile.isBeingUsed && !tile.isCrop, "TILE_UNOCCUPIED");
+        require(tile.isBeingUsed && tile.factoryTypeId == _factoryTypeId, "TILE_UNOCCUPIED");
         computecontract._produceFromFactory(msg.sender, _factoryTypeId);
     } 
-
     function getRegionTiles(uint256 regionId) external view returns (TileData[9] memory) {
         return regionTiles[regionId];
     }

@@ -99,7 +99,7 @@ contract Compute {
         } 
         
 
-        growth = growthRate * ( 1 + _fertility / 100) + watereffect + _ecoscore - _pollutionlevel; 
+        growth = growthRate * ( 1 + _fertility / 200) + watereffect%4 + _ecoscore%7 - _pollutionlevel%7; 
     }
 
     function getHarvestedResourceAndAmount (
@@ -193,7 +193,7 @@ contract Compute {
 
         uint256 wheat = usercontract.getUserInventory(_user, 1);
         uint256 food = usercontract.getUserInventory(_user, 5);
-        require(wheat >= 20 || food >= 10, "Not enough resouces");
+        require(wheat >= 20 && food >= 10, "Not enough resouces");
         usercontract.updateInventory(_user, 1, 20, false);
         usercontract.updateInventory(_user, 5, 10, false);
         usercontract.updateInventory(_user, 7, 35, true);

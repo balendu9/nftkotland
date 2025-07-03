@@ -16,7 +16,6 @@ interface IERC20 {
         uint256 amount
     ) external returns (bool);
 }
-
 contract Marketplace {
     address public admin;
     constructor () {
@@ -41,6 +40,7 @@ contract Marketplace {
     }
 
     uint256 public kotvalue = 0;
+    uint256 public totalassetssold = 0;
 
     struct MarketListing {
         address seller;
@@ -104,6 +104,7 @@ contract Marketplace {
         uint256 amount =  usercontract.getUserInventory(msg.sender, _resourceType);
         require(amount >= _amount, "NOT_ENOUGH_RESOURCES");
         usercontract.updateInventory(msg.sender, _resourceType, _amount, false);
+        usercontract.setUserExists(msg.sender);
 
         marketListing[nextListingId] = MarketListing({
             seller: msg.sender,
@@ -123,6 +124,7 @@ contract Marketplace {
         if (la.totalUnitsListed > 0) {
             la.averageListingPrice = la.totalListingValue / la.totalUnitsListed;
         }
+        usercontract.updateUserExperience(msg.sender, 5);
         emit ListedResourceForSale(_resourceType, _amount, _pricePerUnit);
     }
 
@@ -133,13 +135,18 @@ contract Marketplace {
     ) external {
         MarketListing storage listing = marketListing[listingId];
         require(listing.isActive, "LISTING_NOT_AVAILABLE");
-        require(buyAmount > 0, "INVALID_BUY_AMOUNT");
+        require(buyAmount > 0 && buyAmount <= listing.amount, "INVALID_BUY_AMOUNT");
         uint256 cost = listing.pricePerUnit * buyAmount;
         require(
             token.transferFrom(msg.sender, listing.seller, cost),
             "TOKEN_TRANSFER_FAILED"
         );
+
+        usercontract.updateInventory(msg.sender, listing.resourceType, buyAmount, true);
+        usercontract.setUserExists(msg.sender);
+        
         kotvalue += cost;
+        totalassetssold += buyAmount;
         listing.amount -= buyAmount;
         if (listing.amount == 0) {
             listing.isActive = false;
@@ -182,6 +189,8 @@ contract Marketplace {
         summary.total += listing.pricePerUnit;
         summary.count += 1;
         summary.average = summary.total / summary.count;
+        usercontract.updateUserExperience(msg.sender, 20);
+        usercontract.updateUserExperience(listing.seller, 17);
 
         usercontract.recordMarketplacetx (msg.sender, "Purchase", resources[listing.resourceType], buyAmount, true, cost );
         usercontract.recordMarketplacetx (listing.seller , "Sold", resources[listing.resourceType], buyAmount, false, cost );
@@ -284,18 +293,18 @@ contract Marketplace {
 
 
     function getListingsInRange(uint256 start) external view returns (MarketListing[] memory) {
-        require(start < nextListingId, "Start index out of bounds");
+    require(start < nextListingId, "Start index out of bounds");
 
-        uint256 available = nextListingId - start;
-        uint256 actualCount = available > 20 ? 20 : available;
+    uint256 available = nextListingId - start;
+    uint256 actualCount = available > 20 ? 20 : available;
 
-        MarketListing[] memory listings = new MarketListing[](actualCount);
+    MarketListing[] memory listings = new MarketListing[](actualCount);
 
-        for (uint256 i = 0; i < actualCount; i++) {
-            listings[i] = marketListing[start + i];
-        }
-
-        return listings;
+    for (uint256 i = 0; i < actualCount; i++) {
+        listings[i] = marketListing[start + i];
     }
+
+    return listings;
+}
 
 }
