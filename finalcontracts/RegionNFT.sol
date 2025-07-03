@@ -254,7 +254,7 @@ contract RegionNFT is ERC721Enumerable {
         require( tileId < 9, "INVALID_TILE_ID" );
         TileData storage tile = regionTiles[regionId][tileId];
         require(!tile.isBeingUsed, "TILE_OCCUPIED");
-        require( _factoryTypeId >= 1 && _factoryTypeId <= 4, "INVALID_FACTORY" );
+        require( _factoryTypeId >= 1 && _factoryTypeId <= 5, "INVALID_FACTORY" );
         
         require(
             token.transferFrom(msg.sender, admin, factoryPrice),
